@@ -6,12 +6,16 @@ AgentFlow is two services: a FastAPI backend and a Next.js frontend. This repo i
 
 Render deploys from a Git remote. Commit this repo and push it, then connect that repository in Render.
 
-## 2. Create services from the Blueprint (recommended)
+## 2. Stay on the free Hobby workspace
 
-1. Open [https://dashboard.render.com](https://dashboard.render.com)
-2. Click **New** -> **Blueprint**
-3. Connect the repository that contains `render.yaml`
-4. Apply the Blueprint
+Render is free if you pick:
+
+1. Workspace plan: **Hobby** ($0). Do not pick Pro.
+2. Compute plan for each service: **Free**. Do not pick Starter ($7).
+
+You do not need a paid card for Hobby + Free. If a $1 card check appears, skip adding a card and create the services as Free instead.
+
+If the Blueprint screen still shows a paid plan, cancel it and create two **Web Services** by hand (section 4), choosing **Free** on the instance step.
 
 This creates:
 
@@ -40,6 +44,7 @@ Do not commit `.env` files. Set values in the Render dashboard only.
 ### API service
 
 - Type: **Web Service**
+- Instance type: **Free**
 - Root directory: `agentflow/backend`
 - Runtime: **Python 3**
 - Build: `pip install -r requirements.txt`
@@ -49,6 +54,7 @@ Do not commit `.env` files. Set values in the Render dashboard only.
 ### Web service
 
 - Type: **Web Service**
+- Instance type: **Free**
 - Root directory: `agentflow/frontend`
 - Runtime: **Node**
 - Build: `npm ci && npm run build`
