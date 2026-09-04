@@ -19,9 +19,9 @@ manager = RunManager()
 def _present_key_names() -> list[str]:
     needles = ("KEY", "GEMINI", "LLM", "OPENAI", "DEEPSEEK")
     names = []
-    for name, value in os.environ.items():
+    for name in os.environ:
         upper = name.upper()
-        if any(n in upper for n in needles) and str(value).strip():
+        if any(n in upper for n in needles):
             names.append(name)
     return sorted(names)
 
@@ -29,6 +29,7 @@ def _present_key_names() -> list[str]:
 @router.get("/health")
 async def health() -> dict:
     settings = get_settings()
+    raw = os.getenv("USER_GEMINI_API_KEY")
     return {
         "status": "ok",
         "provider": build_provider().name,
@@ -37,6 +38,8 @@ async def health() -> dict:
         "has_llm_key": bool(settings.openai_key()),
         "force_offline": settings.force_offline,
         "key_env_names": _present_key_names(),
+        "user_gemini_api_key_set": raw is not None,
+        "user_gemini_api_key_len": len((raw or "").strip()),
     }
 
 
