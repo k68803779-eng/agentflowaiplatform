@@ -21,7 +21,9 @@ export function ProviderStatus() {
         try {
           const res = await fetch("/api/health", { cache: "no-store" });
           if (res.ok) {
-            const data = (await res.json()) as HealthInfo;
+            const text = await res.text();
+            const data = JSON.parse(text) as HealthInfo;
+            if (data?.status !== "ok") throw new Error("not ready");
             if (!cancelled) {
               setInfo(data);
               setPhase("ok");

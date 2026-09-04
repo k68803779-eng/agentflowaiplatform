@@ -34,16 +34,29 @@ export interface AgentEvent {
   ts: string;
 }
 
-async function request(url: string, init?: RequestInit, retries = 3): Promise<Response> {
+async function parseJson<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error("API is waking up. Wait 30-60s and try again.");
+  }
+}
+
+async function request(url: string, init?: RequestInit, retries = 5): Promise<Response> {
   let last: Response | null = null;
   for (let i = 0; i < retries; i += 1) {
-    const res = await fetch(url, { ...init, cache: "no-store" });
-    last = res;
-    if (res.ok) return res;
-    if (res.status !== 502 && res.status !== 503 && res.status !== 504) break;
+    try {
+      const res = await fetch(url, { ...init, cache: "no-store" });
+      last = res;
+      const type = res.headers.get("content-type") || "";
+      if (res.ok && type.includes("application/json")) return res;
+    } catch {
+      last = null;
+    }
     await new Promise((r) => setTimeout(r, 4000 * (i + 1)));
   }
-  if (!last) throw new Error("Failed to reach API");
+  if (!last) throw new Error("API is waking up. Wait 30-60s and try again.");
   return last;
 }
 
@@ -59,22 +72,22 @@ export async function createRun(payload: {
   });
   if (!res.ok) {
     throw new Error(
-      res.status === 502 || res.status === 503
-        ? "API is waking up. Wait 30–60s and try again."
+      res.status === 502 || res.status === 503 || res.status === 504
+        ? "API is waking up. Wait 30-60s and try again."
         : `Failed to create run: ${res.status}`,
     );
   }
-  return res.json();
+  return parseJson<Run>(res);
 }
 
 export async function getRun(id: string): Promise<Run> {
-  const res = await fetch(`/api/runs/${id}`);
+  const res = await request(`/api/runs/${id}`);
   if (!res.ok) throw new Error(`Failed to fetch run: ${res.status}`);
-  return res.json();
+  return parseJson<Run>(res);
 }
 
 export async function listRuns(limit = 10): Promise<RunListItem[]> {
-  const res = await fetch(`/api/runs?limit=${limit}`);
+  const res = await request(`/api/runs?limit=${limit}`);
   if (!res.ok) throw new Error(`Failed to list runs: ${res.status}`);
-  return res.json();
+  return parseJson<RunListItem[]>(res);
 }

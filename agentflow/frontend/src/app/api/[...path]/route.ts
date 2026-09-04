@@ -46,7 +46,13 @@ async function proxy(req: NextRequest, path: string[]): Promise<Response> {
       if (body) init.body = body;
 
       const res = await fetch(target, init);
-      if ((res.status === 502 || res.status === 503 || res.status === 504) && i < attempts - 1) {
+      const type = res.headers.get("content-type") || "";
+      const waking =
+        res.status === 502 ||
+        res.status === 503 ||
+        res.status === 504 ||
+        (!isStream && res.ok && !type.includes("application/json") && !type.includes("text/event-stream"));
+      if (waking && i < attempts - 1) {
         await sleep(4000 * (i + 1));
         continue;
       }
