@@ -11,6 +11,7 @@ interface HealthInfo {
   has_gemini_key?: boolean;
   has_llm_key?: boolean;
   force_offline?: boolean;
+  key_env_names?: string[];
 }
 
 export function ProviderStatus() {
@@ -67,8 +68,8 @@ export function ProviderStatus() {
       {phase === "ok" && info ? (
         <span>
           Active model: <span className="font-mono text-foreground">{info.provider}</span>
-          {info.provider.startsWith("offline") && !info.has_gemini_key && !info.has_llm_key
-            ? " — no API key on agentflow-api"
+          {info.provider.startsWith("offline")
+            ? ` — add USER_GEMINI_API_KEY on agentflow-api then Manual Deploy (seen: ${(info.key_env_names || []).join(", ") || "none"})`
             : ""}
         </span>
       ) : phase === "waking" ? (

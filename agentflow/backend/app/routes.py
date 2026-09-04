@@ -5,6 +5,8 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
+import os
+
 from app.config import get_settings
 from app.llm import build_provider
 from app.run_service import RunManager
@@ -12,6 +14,16 @@ from app.schemas import RunCreate, RunListItem, RunOut
 
 router = APIRouter(prefix="/api")
 manager = RunManager()
+
+
+def _present_key_names() -> list[str]:
+    needles = ("KEY", "GEMINI", "LLM", "OPENAI", "DEEPSEEK")
+    names = []
+    for name, value in os.environ.items():
+        upper = name.upper()
+        if any(n in upper for n in needles) and str(value).strip():
+            names.append(name)
+    return sorted(names)
 
 
 @router.get("/health")
@@ -24,6 +36,7 @@ async def health() -> dict:
         "has_gemini_key": bool(settings.gemini_key()),
         "has_llm_key": bool(settings.openai_key()),
         "force_offline": settings.force_offline,
+        "key_env_names": _present_key_names(),
     }
 
 
