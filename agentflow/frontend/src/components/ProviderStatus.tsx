@@ -8,6 +8,9 @@ interface HealthInfo {
   status: string;
   provider: string;
   llm_provider: string;
+  has_gemini_key?: boolean;
+  has_llm_key?: boolean;
+  force_offline?: boolean;
 }
 
 export function ProviderStatus() {
@@ -64,6 +67,9 @@ export function ProviderStatus() {
       {phase === "ok" && info ? (
         <span>
           Active model: <span className="font-mono text-foreground">{info.provider}</span>
+          {info.provider.startsWith("offline") && !info.has_gemini_key && !info.has_llm_key
+            ? " — no API key on agentflow-api"
+            : ""}
         </span>
       ) : phase === "waking" ? (
         <span>Waking API (Free plan sleeps after idle)…</span>

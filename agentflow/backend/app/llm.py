@@ -184,20 +184,20 @@ def _tokenize(text: str) -> list[str]:
 def build_provider(override: str = "") -> LLMProvider:
     settings = get_settings()
     mode = (override or settings.llm_provider or "auto").lower()
-    has_openai = bool(settings.user_llm_api_key)
-    has_gemini = bool(settings.user_gemini_api_key)
+    has_openai = bool(settings.openai_key())
+    has_gemini = bool(settings.gemini_key())
 
     if settings.force_offline or mode == "offline" or (mode == "auto" and not has_openai and not has_gemini):
         return OfflineProvider(token_delay_ms=settings.token_delay_ms)
     if mode == "gemini" or (mode == "auto" and has_gemini):
         return GeminiProvider(
-            api_key=settings.user_gemini_api_key,
+            api_key=settings.gemini_key(),
             model=settings.user_gemini_model,
             temperature=settings.llm_temperature,
             token_delay_ms=settings.token_delay_ms,
         )
     return OpenAICompatProvider(
-        api_key=settings.user_llm_api_key,
+        api_key=settings.openai_key(),
         base_url=settings.user_llm_base_url,
         model=settings.user_llm_model,
         temperature=settings.llm_temperature,

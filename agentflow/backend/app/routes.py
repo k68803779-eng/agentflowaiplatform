@@ -16,10 +16,14 @@ manager = RunManager()
 
 @router.get("/health")
 async def health() -> dict:
+    settings = get_settings()
     return {
         "status": "ok",
         "provider": build_provider().name,
-        "llm_provider": get_settings().llm_provider,
+        "llm_provider": settings.llm_provider,
+        "has_gemini_key": bool(settings.gemini_key()),
+        "has_llm_key": bool(settings.openai_key()),
+        "force_offline": settings.force_offline,
     }
 
 

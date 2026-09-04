@@ -1,6 +1,15 @@
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _first_env(*names: str) -> str:
+    for name in names:
+        value = os.getenv(name, "").strip()
+        if value:
+            return value
+    return ""
 
 
 class Settings(BaseSettings):
@@ -28,6 +37,19 @@ class Settings(BaseSettings):
         if url.startswith("postgres://"):
             return "postgresql://" + url[len("postgres://") :]
         return url
+
+    def gemini_key(self) -> str:
+        return self.user_gemini_api_key.strip() or _first_env(
+            "GEMINI_API_KEY",
+            "GOOGLE_API_KEY",
+            "GOOGLE_GENERATIVE_AI_API_KEY",
+        )
+
+    def openai_key(self) -> str:
+        return self.user_llm_api_key.strip() or _first_env(
+            "OPENAI_API_KEY",
+            "DEEPSEEK_API_KEY",
+        )
 
 
 @lru_cache
