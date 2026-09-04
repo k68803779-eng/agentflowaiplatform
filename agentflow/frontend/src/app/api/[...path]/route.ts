@@ -8,8 +8,14 @@ function backendBase(): string {
   if (process.env.BACKEND_URL) {
     return process.env.BACKEND_URL.replace(/\/$/, "");
   }
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
+  }
   if (process.env.BACKEND_HOST) {
     return `https://${process.env.BACKEND_HOST}`;
+  }
+  if (process.env.NODE_ENV === "production") {
+    return "https://agentflow-api-4q3j.onrender.com";
   }
   return "http://localhost:8000";
 }

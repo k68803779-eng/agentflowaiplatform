@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { AgentEvent, Run } from "@/lib/api";
-import { getRun } from "@/lib/api";
+import { apiUrl, getRun } from "@/lib/api";
 
 export function useRunStream(runId: string) {
   const [run, setRun] = useState<Run | null>(null);
@@ -21,7 +21,7 @@ export function useRunStream(runId: string) {
       .catch(() => {});
 
     if (typeof window !== "undefined") {
-      es = new EventSource(`/api/runs/${runId}/stream`);
+      es = new EventSource(apiUrl(`/api/runs/${runId}/stream`));
       es.onopen = () => {
         if (!disposed) setConnected(true);
       };

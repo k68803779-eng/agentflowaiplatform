@@ -34,6 +34,20 @@ export interface AgentEvent {
   ts: string;
 }
 
+const PROD_API_FALLBACK = "https://agentflow-api-4q3j.onrender.com";
+
+export function apiBase(): string {
+  const explicit = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+  if (explicit) return explicit;
+  if (process.env.NODE_ENV === "production") return PROD_API_FALLBACK;
+  return "";
+}
+
+export function apiUrl(path: string): string {
+  const base = apiBase();
+  return base ? `${base}${path}` : path;
+}
+
 async function parseJson<T>(res: Response): Promise<T> {
   const text = await res.text();
   try {
@@ -43,18 +57,18 @@ async function parseJson<T>(res: Response): Promise<T> {
   }
 }
 
-async function request(url: string, init?: RequestInit, retries = 5): Promise<Response> {
+async function request(path: string, init?: RequestInit, retries = 6): Promise<Response> {
   let last: Response | null = null;
   for (let i = 0; i < retries; i += 1) {
     try {
-      const res = await fetch(url, { ...init, cache: "no-store" });
+      const res = await fetch(apiUrl(path), { ...init, cache: "no-store" });
       last = res;
       const type = res.headers.get("content-type") || "";
       if (res.ok && type.includes("application/json")) return res;
     } catch {
       last = null;
     }
-    await new Promise((r) => setTimeout(r, 4000 * (i + 1)));
+    await new Promise((r) => setTimeout(r, 5000));
   }
   if (!last) throw new Error("API is waking up. Wait 30-60s and try again.");
   return last;

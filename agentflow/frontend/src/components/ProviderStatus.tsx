@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { apiUrl } from "@/lib/api";
+
 interface HealthInfo {
   status: string;
   provider: string;
@@ -11,18 +13,18 @@ interface HealthInfo {
 export function ProviderStatus() {
   const [info, setInfo] = useState<HealthInfo | null>(null);
   const [phase, setPhase] = useState<"loading" | "waking" | "ok" | "down">("loading");
+  const healthUrl = apiUrl("/api/health");
 
   useEffect(() => {
     let cancelled = false;
     let attempt = 0;
 
     async function load() {
-      while (!cancelled && attempt < 8) {
+      while (!cancelled && attempt < 10) {
         try {
-          const res = await fetch("/api/health", { cache: "no-store" });
+          const res = await fetch(healthUrl, { cache: "no-store" });
           if (res.ok) {
-            const text = await res.text();
-            const data = JSON.parse(text) as HealthInfo;
+            const data = JSON.parse(await res.text()) as HealthInfo;
             if (data?.status !== "ok") throw new Error("not ready");
             if (!cancelled) {
               setInfo(data);
@@ -35,7 +37,7 @@ export function ProviderStatus() {
         }
         attempt += 1;
         if (!cancelled) setPhase("waking");
-        await new Promise((r) => setTimeout(r, 4000));
+        await new Promise((r) => setTimeout(r, 5000));
       }
       if (!cancelled) setPhase("down");
     }
@@ -44,7 +46,7 @@ export function ProviderStatus() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [healthUrl]);
 
   const isOffline = info?.provider?.startsWith("offline");
 
@@ -66,7 +68,9 @@ export function ProviderStatus() {
       ) : phase === "waking" ? (
         <span>Waking API (Free plan sleeps after idle)…</span>
       ) : phase === "down" ? (
-        <span>API unreachable. Open agentflow-api in Render and wait for Live.</span>
+        <a href={healthUrl} target="_blank" rel="noreferrer" className="underline">
+          API sleeping — click to wake, then refresh this page
+        </a>
       ) : (
         <span>Checking model provider…</span>
       )}
