@@ -34,17 +34,36 @@ export interface AgentEvent {
   ts: string;
 }
 
+async function request(url: string, init?: RequestInit, retries = 3): Promise<Response> {
+  let last: Response | null = null;
+  for (let i = 0; i < retries; i += 1) {
+    const res = await fetch(url, { ...init, cache: "no-store" });
+    last = res;
+    if (res.ok) return res;
+    if (res.status !== 502 && res.status !== 503 && res.status !== 504) break;
+    await new Promise((r) => setTimeout(r, 4000 * (i + 1)));
+  }
+  if (!last) throw new Error("Failed to reach API");
+  return last;
+}
+
 export async function createRun(payload: {
   topic: string;
   audience: string;
   tone: string;
 }): Promise<Run> {
-  const res = await fetch("/api/runs", {
+  const res = await request("/api/runs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`Failed to create run: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(
+      res.status === 502 || res.status === 503
+        ? "API is waking up. Wait 30–60s and try again."
+        : `Failed to create run: ${res.status}`,
+    );
+  }
   return res.json();
 }
 

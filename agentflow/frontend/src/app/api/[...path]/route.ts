@@ -14,6 +14,10 @@ function backendBase(): string {
   return "http://localhost:8000";
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function proxy(req: NextRequest, path: string[]): Promise<Response> {
   const target = `${backendBase()}/api/${path.join("/")}${req.nextUrl.search}`;
   const headers = new Headers();
@@ -25,33 +29,59 @@ async function proxy(req: NextRequest, path: string[]): Promise<Response> {
     headers.set(key, value);
   });
 
-  const init: RequestInit = {
-    method: req.method,
-    headers,
-    redirect: "manual",
-  };
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    init.body = await req.arrayBuffer();
+  const body =
+    req.method !== "GET" && req.method !== "HEAD" ? await req.arrayBuffer() : undefined;
+  const isStream = path.includes("stream");
+  const attempts = isStream ? 1 : 4;
+
+  let lastError: unknown = null;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const init: RequestInit = {
+        method: req.method,
+        headers,
+        redirect: "manual",
+        cache: "no-store",
+      };
+      if (body) init.body = body;
+
+      const res = await fetch(target, init);
+      if ((res.status === 502 || res.status === 503 || res.status === 504) && i < attempts - 1) {
+        await sleep(4000 * (i + 1));
+        continue;
+      }
+
+      const outHeaders = new Headers();
+      res.headers.forEach((value, key) => {
+        const lower = key.toLowerCase();
+        if (lower === "transfer-encoding" || lower === "connection") return;
+        outHeaders.set(key, value);
+      });
+
+      if (outHeaders.get("content-type")?.includes("text/event-stream")) {
+        outHeaders.set("Cache-Control", "no-cache, no-transform");
+        outHeaders.set("X-Accel-Buffering", "no");
+      }
+
+      return new Response(res.body, {
+        status: res.status,
+        statusText: res.statusText,
+        headers: outHeaders,
+      });
+    } catch (err) {
+      lastError = err;
+      if (i < attempts - 1) {
+        await sleep(4000 * (i + 1));
+        continue;
+      }
+    }
   }
 
-  const res = await fetch(target, init);
-  const outHeaders = new Headers();
-  res.headers.forEach((value, key) => {
-    const lower = key.toLowerCase();
-    if (lower === "transfer-encoding" || lower === "connection") return;
-    outHeaders.set(key, value);
-  });
-
-  if (outHeaders.get("content-type")?.includes("text/event-stream")) {
-    outHeaders.set("Cache-Control", "no-cache, no-transform");
-    outHeaders.set("X-Accel-Buffering", "no");
-  }
-
-  return new Response(res.body, {
-    status: res.status,
-    statusText: res.statusText,
-    headers: outHeaders,
-  });
+  const message = lastError instanceof Error ? lastError.message : "Backend unavailable";
+  return Response.json(
+    { detail: `API is waking up or unreachable: ${message}` },
+    { status: 503 },
+  );
 }
 
 type RouteCtx = { params: Promise<{ path: string[] }> };
